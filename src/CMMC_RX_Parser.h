@@ -3,24 +3,20 @@
 
 #include <Arduino.h>
 
-#define DATA_BUFFER 	128
+#define DATA_BUFFER 	SERIAL_RX_BUFFER_SIZE
 
 typedef enum {
-	WAIT_STATE = 0,
-	CMD_STATE,
-	DATA_STATE
+  WAIT_STATE = 0,
+  DATA_STATE
 } CMMC_SERIAL_CMD_STATE;
 
 
-#define CMMC_SLEEP_TIME_CMD 0x88
-
 typedef struct __attribute((__packed__)) {
-	uint8_t  cmd;
+	uint8_t  data[100];
   uint16_t len;
-	uint8_t  data[DATA_BUFFER];
 } CMMC_SERIAL_PACKET_T;
 
-typedef void (*cmmc_void_cb_t)(CMMC_SERIAL_PACKET_T *packet);
+typedef void(*callback_t)(u8* packet, u8 len);
 
 
 class CMMC_RX_Parser
@@ -30,21 +26,24 @@ class CMMC_RX_Parser
       CMMC_RX_Parser(Stream *s) { 
       	this->_serial = s;
       }
-      ~CMMC_RX_Parser() {}
 
-      void init();
+      ~CMMC_RX_Parser() { } 
       void _parse(uint8_t data);
       void process();
-      void on_command_arrived(cmmc_void_cb_t cb) {
-        this->_user_on_data = cb;
+      void on_command_arrived(callback_t cb) {
+        if (cb != NULL) {
+          this->_user_on_data = cb; 
+        } 
       }
 
     private:
+      uint16_t _len = 0;
     	Stream *_serial;
     	CMMC_SERIAL_CMD_STATE _state;
     	CMMC_SERIAL_PACKET_T _packet;
       CMMC_SERIAL_PACKET_T _user_packet;
-      cmmc_void_cb_t _user_on_data;
+      callback_t _user_on_data = NULL;
+      uint8_t _read_rx();
 };
 
 #endif //CMMC_RX_Parser_H
